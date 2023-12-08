@@ -359,9 +359,26 @@ class GtpConnection:
         """ 
         Modify this function for Assignment 2.
         """
-
         board_color = args[0].lower()
-        self.play_cmd([board_color, self.engine.get_move(self.board, board_color), 'print_move'])
+        color = color_to_int(board_color)
+        result1 = self.board.detect_five_in_a_row()
+        result2 = EMPTY
+        if self.board.get_captures(opponent(color)) >= 10:
+            result2 = opponent(color)
+        if result1 == opponent(color) or result2 == opponent(color):
+            self.respond("resign")
+            return
+        legal_moves = self.board.get_empty_points()
+        if legal_moves.size == 0:
+            self.respond("pass")
+            return
+        
+        move_as_string = ""
+        if self.board.policy == "random":
+            move_as_string = self.simulate_move()
+        else:
+            move_as_string  = format_point(point_to_coord(self.board.rule_based_silumation(verbose=False), self.board.size))
+        self.play_cmd([board_color, move_as_string, 'print_move'])
     
     def timelimit_cmd(self, args: List[str]) -> None:
         """ Implement this function for Assignment 2 """
