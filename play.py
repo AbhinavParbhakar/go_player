@@ -1,4 +1,5 @@
 import pexpect
+import logging
 
 #Change the paths here to test different players
 player1='T_302/Ninuki.py'
@@ -6,15 +7,16 @@ player2='ab_player/Ninuki-ab.py'
 
 #Change the timeout to test different time limits
 #We will use a 60 second timeout for testing your submission
-timeout=1
+timeout=60
 
 #Change the number of games played by the script
-numGames = 1
+numGames = 10
 
 win1=0
 win2=0
 numTimeout=0
 draw=0
+
 
 def getMove(p,color):
     p.sendline('genmove '+color)
@@ -32,6 +34,7 @@ def setupPlayer(p):
     p.sendline('timelimit {}'.format(timeout))
 
 def playSingleGame(alternative=False):
+
     if not alternative:
         p1=pexpect.spawn('python3 '+player1,timeout=timeout+1)
         p2=pexpect.spawn('python3 '+player2,timeout=timeout+1)
@@ -123,6 +126,8 @@ def saveResult():
     f.write("draw {}\n".format(draw))
     f.close()
 
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='/cshome/parbhaka/cmput-455/assignment4/T_302/logging/play.log')
 playGames(numGames)
 outputResult()
 saveResult()

@@ -29,6 +29,7 @@ from board_base import (
 from board import GoBoard
 from board_util import GoBoardUtil
 from engine import GoEngine
+import logging
 
 class GtpConnection:
     def __init__(self, engine: GoEngine, board: GoBoard, debug_mode: bool = False) -> None:
@@ -46,6 +47,8 @@ class GtpConnection:
         self.time_limit = 1
         self.solve_start_time = 0
         self.best_move = None
+        logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='/cshome/parbhaka/cmput-455/assignment4/T_302/logging/gpt_connection.log')
 
         self._debug_mode: bool = debug_mode
         self.engine = engine
@@ -359,6 +362,7 @@ class GtpConnection:
         """ 
         Modify this function for Assignment 2.
         """
+        logging.info("Genmove_cmd invoked")
         board_color = args[0].lower()
         color = color_to_int(board_color)
         result1 = self.board.detect_five_in_a_row()
@@ -375,8 +379,10 @@ class GtpConnection:
         
         move_as_string = ""
         if self.board.policy == "random":
+            logging.info("simluation invoked")
             move_as_string = self.simulate_move()
         else:
+            logging.info("rule_based_simulation invoked")
             move_as_string  = format_point(point_to_coord(self.board.rule_based_silumation(verbose=False), self.board.size))
         self.play_cmd([board_color, move_as_string, 'print_move'])
     

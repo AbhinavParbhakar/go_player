@@ -14,6 +14,7 @@ The board uses a 1-dimensional representation with padding
 import numpy as np
 import random
 from typing import List, Tuple
+import logging
 
 from board_base import (
     board_array_size,
@@ -49,20 +50,33 @@ class GoBoard(object):
         Creates a Go board of given size
         """
         assert 2 <= size <= MAXSIZE
+        logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='/cshome/parbhaka/cmput-455/assignment4/T_302/logging/board.log')
         self.reset(size)
         self.calculate_rows_cols_diags()
         self.black_captures = 0
         self.white_captures = 0
-        self.policy = "random"
+        self.policy = "rule-based"
         self.num_simulations = 10
         self.potential_winning_points = set()
 
+    def ucb_simulate_move(self,move:GO_POINT)->GO_COLOR:
+        """
+        Recursive to allow for callback
+        1. Need to create a way to store num_wins for move, num_played for move, num_simulations
+        """
+        
+        pass
+
+
+
     def simulate_move(self, move: GO_POINT)->float:
         move_color : GO_COLOR = self.current_player
+        opponent_color : GO_COLOR = opponent(self.current_player)
         num_wins = 0
+        temp_board = self.copy()
+        temp_board.play_move(move,move_color)
         for _ in range(self.num_simulations):
-            temp_board = self.copy()
-            temp_board.play_move(move,move_color)
             while temp_board.isEndOfGame() == False:
                 empty_points = temp_board.get_empty_points()
                 random.shuffle(empty_points)
@@ -70,7 +84,6 @@ class GoBoard(object):
             
             if move_color == temp_board.get_winner():
                 num_wins+=1
-        
         return float(num_wins / self.num_simulations)
                 
     def simulate(self) -> GO_POINT:
@@ -78,13 +91,14 @@ class GoBoard(object):
         empty_points = self.get_empty_points()
         best_move : GO_POINT = 0
         best_score = float("-inf")
-
+        logging.info("Entering simulate")
         for point in empty_points:
             score = self.simulate_move(point)
             if score > best_score:
                 best_score = score
                 best_move = point
         
+        logging.info(f"Exiting simulate and returning {best_move}")
         return best_move
 
     def add_two_captures(self, color: GO_COLOR) -> None:
@@ -265,12 +279,14 @@ class GoBoard(object):
 
         directions : list = [('0','4'),('1','5'),('2','6'),('3','7')] # check in each of the four cross sections to see if the result is more than 5, meaning a win
 
-
+        logging.info("entering check_if_open_four")
         for direction1,direction2 in directions:
             count_one = self.in_a_row_until_empty_point(move + action_neighbor_mapping[direction1],int(direction1),0)
             count_two = self.in_a_row_until_empty_point(move + action_neighbor_mapping[direction2],int(direction2),0)
             if count_one + count_two >= 3:
+                logging.info("exiting check_if_open_four with True")
                 return True
+        logging.info("exiting check_if_open_four with false")
         return False
 
     def return_five_in_row_set(self,move:GO_POINT)->set:
@@ -362,12 +378,13 @@ class GoBoard(object):
         Returns a number from 0 to 1 otherwise, telling us how strong the block would be
         """
         #for this, simply switch the self.current player and call get_win_or_connection_count, then swap it back
-        
+        logging.info("Entering blocks_win")
         self.current_player = opponent(self.current_player)
 
         result = self.check_win(move)
         self.current_player = opponent(self.current_player)
         if result:
+            logging.info("leaving blocks_win, returing true")
             return True
         else:
             captures : set = self.get_captures_set(move)
@@ -375,8 +392,10 @@ class GoBoard(object):
             result = self.get_all_possible_wins()
             self.current_player = opponent(self.current_player)
             if len(captures.intersection(result)) > 0:
+                logging.info("leaving blocks_win, returing true")
                 return True
             else:
+                logging.info("leaving blocks_win, returing false")
                 return False
         
         
@@ -518,6 +537,7 @@ class GoBoard(object):
         
     def check_win(self,move: GO_POINT)->bool:
         """Checks to see if move would result in a win for the move"""
+        logging.info("entering check_win")
         captures_count = self.get_captures_count(move)
         is_win = self.check_if_five_in_row(move)
         if self.current_player == WHITE:
@@ -525,28 +545,37 @@ class GoBoard(object):
         elif self.current_player == BLACK:
             captures_count += self.black_captures
 
+        logging.info("exiting check_win")
         if is_win or captures_count >= 10:
+            logging.info(f'returning {True} from check_win')
             return True
         else:
+            logging.info(f'returning {False} from check_win')
             return False
         
     def check_if_captures(self, move: GO_POINT)->bool:
+        logging.info("entering check_if_captures")
         if self.get_captures_count(move) >= 2:
+            logging.info("exiting check_if_captures with True")
             return True
         else:
+            logging.info("exiting check_if_captures with False")
             return False
         
     def rule_based_silumation(self,verbose=False):
         """If verbose mode is True, False by default, return rule, and possible moves \n
         If False, return move
         """
+        logging.info("entering rule_based_simulation")
         if verbose:
             return(self.rule_based_move())
         else:
             rule, result = self.rule_based_move()
             if rule == "":
+                logging.info("will return result of self.simulate")
                 return self.simulate()
             else:
+                logging.info("Returning best found move")
                 return result[0]
 
     def rule_based_move(self)->"tuple[str,list[int]]":
@@ -556,20 +585,26 @@ class GoBoard(object):
         rule_names = ["Win","BlockWin","OpenFour","Capture"]
         rule_results = [list()] * len(rules)
         empty_points = self.get_empty_points()
+        logging.info(f"Entering rule_based_move")
 
         for i,rule in enumerate(rules):
             if i >= 1 and len(rule_results[i - 1]) > 0:
                 return (rule_names[i-1],rule_results[i - 1])
             else:
+                logging.info(f"Entered loop for {rule_names[i]}")
                 for point in empty_points:
-                    if point == 35:
-                        print("here")
                     if rule(point):
+                        logging.critical(f"Appended to move for {rule_names[i]} for point {point}")
                         rule_results[i].append(point)
 
-        if rule_results[len(rule_results) - 1].__len__ == 0:
+        logging.critical("Exited Loop in rule_based_move")
+        logging.warn(f'Rule_results is the following: {rule_results}')
+        logging.warn(f'Length of final list in rule_results: {len(rule_results[len(rule_results) - 1])}')
+        if len(rule_results[len(rule_results) - 1]) == 0:
+            logging.info(f"exiting rule_based_move with no result")
             return ("",[])
         else:
+            logging.info(f"exiting rule_based_move with result")
             return (rule_names[len(rule_results) - 1],rule_results[len(rule_results) - 1])
         
         
